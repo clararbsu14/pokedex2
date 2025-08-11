@@ -1,0 +1,106 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background-color: #f5f5f5; /* Couleur de fond harmonisée */
+  color: #000; /* Texte noir pour contraste */
+  font-family: 'Roboto', sans-serif;
+  overflow-x: hidden; /* Empêche le scroll horizontal */
+  margin: 0;
+}
+
+.header {
+  text-align: center;
+  padding: 20px;
+  background-color: #fff; /* Blanc pour le header */
+  color: #000; /* Texte noir */
+  width: 100%;
+  border-bottom: 5px solid #ddd; /* Bordure grise */
+}
+
+.hero {
+  text-align: center;
+  padding: 50px;
+  background: url('hero-image.jpg') no-repeat center center/cover;
+  color: #000; /* Texte noir */
+  width: 100%;
+  border: 5px solid #ddd; /* Bordure grise */
+  border-radius: 10px;
+}
+
+.ctaButton {
+  padding: 15px 30px;
+  font-size: 18px;
+  background-color: #1976d2; /* Bleu vif */
+  color: #fff; /* Texte blanc */
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  margin-top: 20px;
+  margin-right: 20px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+}
+
+.features {
+  padding: 20px;
+  margin: 20px;
+  background-color: #fff; /* Blanc pour les sections */
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+  width: 80%;
+  border: 3px solid #ddd; /* Bordure grise */
+}
+
+.features h2 {
+  text-align: center;
+  color: #000; /* Texte noir */
+}
+
+.features ul {
+  list-style: none;
+  padding: 0;
+}
+
+.features ul li {
+  padding: 10px;
+  font-size: 18px;
+  border-bottom: 1px solid #ddd; /* Ligne grise */
+}
+
+.team {
+  padding: 20px;
+  margin: 20px;
+  background-color: #fff; /* Blanc pour les sections */
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+  width: 80%;
+  border: 3px solid #ddd; /* Bordure grise */
+}
+
+.team h2 {
+  text-align: center;
+  color: #000; /* Texte noir */
+}
+
+.team .members {
+  display: flex; /* Affiche les membres à l'horizontal */
+  justify-content: center; /* Centre les membres horizontalement */
+  gap: 20px; /* Ajoute un espace entre les membres */
+}
+
+.member {
+  text-align: center;
+  margin: 10px;
+  flex: 1; /* Permet aux membres de prendre une largeur égale */
+}
+
+.footer {
+  text-align: center;
+  padding: 10px;
+  background-color: #fff; /* Blanc pour le footer */
+  color: #000; /* Texte noir */
+  width: 100%;
+  border-top: 5px solid #ddd; /* Bordure grise */
+}
