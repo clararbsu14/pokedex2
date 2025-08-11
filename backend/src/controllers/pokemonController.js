@@ -1,164 +1,174 @@
-const connection = require('../bd/connexion');
+const db = require('../bd/connection'); // <-- CORRIGÉ : "connection" (pas "connexion")
 
-const getPokemons = async (req, res) => {
-  const { name, type} = req.query;
-
-  let query = 'SELECT * FROM pokemon WHERE 1=1';
-  const params = [];
-
-  if (name) {
-    query += ' AND name_french LIKE ?';
-    params.push(`%${name}%`);
-  }
-
-  if (type) {
-    query += ' AND FIND_IN_SET(?, types)';
-    params.push(type);
-  }
-
+// GET /api/pokemons/list
+async function getPokemons(req, res) {
   try {
-    const [rows] = await connection.query(query, params);
-    res.json( rows );
-  } catch (error) {
-    console.error('Erreur lors de la récupération des Pokémon :', error);
-    res.status(500).json({ message: 'Erreur serveur' });
-  }
-};
+    const { name, type } = req.query;
 
-const getPokemonById = async (req, res) => {
-  const { id } = req.params;
-  try {
-    const [rows] = await connection.query('SELECT * FROM pokemon WHERE id = ?', [id]);
-    if (rows.length === 0) {
-      return res.status(404).json({ message: 'Pokémon introuvable' });
+    let query = 'SELECT * FROM pokemon WHERE 1=1';
+    const params = [];
+
+    if (name) {
+      query += ' AND name_french LIKE ?';
+      params.push(`%${name}%`);
     }
+    if (type) {
+      query += ' AND FIND_IN_SET(?, types)';
+      params.push(type);
+    }
+
+    const [rows] = await db.query(query, params);
+    res.json(rows);
+  } catch (error) {
+    console.error('getPokemons error:', error);
+    res.status(500).json({ message: 'Erreur serveur', code: error.code });
+  }
+}
+
+// GET /api/pokemons/details/:id
+async function getPokemonById(req, res) {
+  try {
+    const { id } = req.params;
+    const [rows] = await db.query('SELECT * FROM pokemon WHERE id = ?', [id]);
+    if (rows.length === 0) return res.status(404).json({ message: 'Pokémon introuvable' });
     res.json(rows[0]);
   } catch (error) {
-    console.error('Erreur lors de la récupération du Pokémon :', error);
-    res.status(500).json({ message: 'Erreur serveur' });
+    console.error('getPokemonById error:', error);
+    res.status(500).json({ message: 'Erreur serveur', code: error.code });
   }
-};
+}
 
-const addPokemon = async (req, res) => {
-  const {
-    id,
-    name_french,
-    types,
-    abilities,
-    hp,
-    attack,
-    defense,
-    sp_attack,
-    sp_defense,
-    speed,
-    description,
-    height,
-    weight,
-    hires,
-  } = req.body;
-
+// GET /api/pokemons/last-id
+async function getLastId(_req, res) {
   try {
-    // Vérifier si le Pokémon existe déjà par son nom
-    const [existingPokemon] = await connection.query('SELECT * FROM pokemon WHERE name_french = ?', [name_french]);
-    if (existingPokemon.length > 0) {
+    const [rows] = await db.query('SELECT MAX(id) AS lastId FROM pokemon');
+    res.json({ lastId: rows[0]?.lastId || 0 });
+  } catch (error) {
+    console.error('getLastId error:', error);
+    res.status(500).json({ message: 'Erreur serveur', code: error.code });
+  }
+}
+
+// POST /api/pokemons/add
+async function addPokemon(req, res) {
+  try {
+    const {
+      id,
+      name_french,
+      types,
+      abilities,
+      hp,
+      attack,
+      defense,
+      sp_attack,
+      sp_defense,
+      speed,
+      description,
+      height,
+      weight,
+      hires,
+    } = req.body;
+
+    const [existing] = await db.query('SELECT 1 FROM pokemon WHERE name_french = ?', [name_french]);
+    if (existing.length > 0) {
       return res.status(400).json({ message: `Un Pokémon avec le nom "${name_french}" existe déjà.` });
     }
 
-    // Ajouter le Pokémon
-    await connection.query(
-      `INSERT INTO pokemon (id, name_french, types, abilities, hp, attack, defense, sp_attack, sp_defense, speed, description, height, weight, hires)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    await db.query(
+      `INSERT INTO pokemon
+       (id, name_french, types, abilities, hp, attack, defense, sp_attack, sp_defense, speed, description, height, weight, hires)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         name_french,
-        types,
-        abilities,
-        hp,
-        attack,
-        defense,
-        sp_attack,
-        sp_defense,
-        speed,
-        description,
-        height,
-        weight,
-        hires,
+        Array.isArray(types) ? types.join(',') : types ?? null,
+        Array.isArray(abilities) ? abilities.join(',') : abilities ?? null,
+        hp ?? null,
+        attack ?? null,
+        defense ?? null,
+        sp_attack ?? null,
+        sp_defense ?? null,
+        speed ?? null,
+        description ?? null,
+        height ?? null,
+        weight ?? null,
+        hires ?? null,
       ]
     );
 
     res.status(201).json({ message: 'Pokémon bien ajouté' });
   } catch (error) {
-    console.error('Erreur lors de l\'ajout du Pokémon :', error);
-    res.status(500).json({ message: 'Erreur serveur' });
+    console.error('addPokemon error:', error);
+    res.status(500).json({ message: 'Erreur serveur', code: error.code });
   }
-};
+}
 
-const updatePokemon = async (req, res) => {
-  const { id } = req.params;
-  const {
-    name_french,
-    types,
-    abilities,
-    hp,
-    attack,
-    defense,
-    sp_attack,
-    sp_defense,
-    speed,
-    description,
-    height,
-    weight,
-    hires,
-  } = req.body;
-
+// PUT /api/pokemons/update/:id
+async function updatePokemon(req, res) {
   try {
-    await connection.query(
-      `UPDATE pokemon SET name_french = ?, types = ?, abilities = ?, hp = ?, attack = ?, defense = ?, sp_attack = ?, sp_defense = ?, speed = ?, description = ?, height = ?, weight = ?, hires = ?
-      WHERE id = ?`,
+    const { id } = req.params;
+    const {
+      name_french,
+      types,
+      abilities,
+      hp,
+      attack,
+      defense,
+      sp_attack,
+      sp_defense,
+      speed,
+      description,
+      height,
+      weight,
+      hires,
+    } = req.body;
+
+    await db.query(
+      `UPDATE pokemon
+       SET name_french=?, types=?, abilities=?, hp=?, attack=?, defense=?, sp_attack=?, sp_defense=?, speed=?, description=?, height=?, weight=?, hires=?
+       WHERE id=?`,
       [
         name_french,
-        types,
-        abilities,
-        hp,
-        attack,
-        defense,
-        sp_attack,
-        sp_defense,
-        speed,
-        description,
-        height,
-        weight,
-        hires,
+        Array.isArray(types) ? types.join(',') : types ?? null,
+        Array.isArray(abilities) ? abilities.join(',') : abilities ?? null,
+        hp ?? null,
+        attack ?? null,
+        defense ?? null,
+        sp_attack ?? null,
+        sp_defense ?? null,
+        speed ?? null,
+        description ?? null,
+        height ?? null,
+        weight ?? null,
+        hires ?? null,
         id,
       ]
     );
 
     res.json({ message: 'Pokémon mis à jour avec succès' });
   } catch (error) {
-    console.error('Erreur lors de la mise à jour du Pokémon :', error);
-    res.status(500).json({ message: 'Erreur serveur' });
+    console.error('updatePokemon error:', error);
+    res.status(500).json({ message: 'Erreur serveur', code: error.code });
   }
-};
+}
 
-const deletePokemon = async (req, res) => {
-  const { id } = req.params;
+// DELETE /api/pokemons/delete/:id
+async function deletePokemon(req, res) {
   try {
-    await connection.query('DELETE FROM pokemon WHERE id = ?', [id]);
+    const { id } = req.params;
+    await db.query('DELETE FROM pokemon WHERE id = ?', [id]);
     res.json({ message: 'Pokémon supprimé avec succès' });
   } catch (error) {
-    console.error('Erreur lors de la suppression du Pokémon :', error);
-    res.status(500).json({ message: 'Erreur serveur' });
+    console.error('deletePokemon error:', error);
+    res.status(500).json({ message: 'Erreur serveur', code: error.code });
   }
-};
+}
 
-const getLastId = async (req, res) => {
-  try {
-    const [rows] = await connection.query('SELECT MAX(id) AS lastId FROM pokemon');
-    res.json({ lastId: rows[0].lastId || 0 });
-  } catch (error) {
-    console.error('Erreur lors de la récupération du dernier ID :', error);
-    res.status(500).json({ message: 'Erreur serveur' });
-  }
+module.exports = {
+  getPokemons,
+  getPokemonById,
+  getLastId,
+  addPokemon,
+  updatePokemon,
+  deletePokemon,
 };
-
-module.exports = { getPokemons, getPokemonById, addPokemon, updatePokemon, deletePokemon, getLastId };

@@ -3,24 +3,31 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 
 const pokemonRoutes = require('./routes/pokemonRoutes');
-const authRoutes = require('./routes/authRoutes');
+const db = require('./bd/connection'); // <-- connexion MySQL unique
 
 const app = express();
-
-// Middleware pour autoriser les requêtes cross-origin
 app.use(cors());
-
-// Middleware pour parser les données JSON
 app.use(bodyParser.json());
 
-// Routes pour les pokémons
+// Sanity checks
+app.get('/', (_req, res) => res.send('API up'));
+app.get('/ping', (_req, res) => res.send('pong'));
+
+// Debug DB: vérifie la connexion + table "pokemon"
+app.get('/debug/db', async (_req, res) => {
+  try {
+    const [r] = await db.query('SELECT COUNT(*) AS n FROM pokemon'); // adapte le nom si besoin
+    res.json(r[0]);
+  } catch (e) {
+    console.error('DEBUG/DB ERROR:', e);
+    res.status(500).json({ error: e.message, code: e.code });
+  }
+});
+
+// Routes métier
 app.use('/api/pokemons', pokemonRoutes);
 
-// Routes pour l'authentification
-app.use('/api/auth', authRoutes);
-
-// Lancement du serveur
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
