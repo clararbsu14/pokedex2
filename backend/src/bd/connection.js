@@ -15,7 +15,7 @@ module.exports = pool;
 
 /* #demarrer le frontend 
 
-cd /Users/clara/Downloads/pokedex-main
+cd frontend
 npm install
 npm run dev
 

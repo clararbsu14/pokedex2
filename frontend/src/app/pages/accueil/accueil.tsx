@@ -1,5 +1,6 @@
-// Importation du fichier CSS en module
 import styles from "./accueil.module.css";
+
+
 
 // Importation du composant Link pour la navigation entre les pages
 import { Link } from "react-router-dom";
@@ -44,22 +45,13 @@ function Accueil() {
 
       {/* Présentation de l'équipe du projet */}
       <section className={styles.team}>
-        <h2>Notre équipe</h2>
-
+        <h2>Projet</h2>
         <div className={styles.member}>
-          <h3>Lucas Broda</h3>
-          <p>Etudiant en AP3</p>
+          <h3> Clara Rabusseau</h3>
+          <p>Rattrapage </p>
         </div>
 
-        <div className={styles.member}>
-          <h3>Axel Fournier</h3>
-          <p>Etudiant en AP3</p>
-        </div>
-
-        <div className={styles.member}>
-          <h3>Lucas Manche</h3>
-          <p>Etudiant en AP3</p>
-        </div>
+   
       </section>
     </div>
   );

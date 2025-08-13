@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import styles from "./liste.module.css";
+
 
 // Type pour un Pokémon
 type Pokemon = {
@@ -16,10 +17,11 @@ type ModalProps = {
   onUpdate: (updatedPokemon: Pokemon) => void;
   onDelete: (pokemonId: number) => void;
   onAddFavorite: (pokemon: Pokemon) => void;
+  isLoggedIn: boolean;
 };
 
 // Composant modale d’un Pokémon
-function PokemonModal({ pokemon, onClose, onUpdate, onDelete, onAddFavorite }: ModalProps) {
+function PokemonModal({ pokemon, onClose, onUpdate, onDelete, onAddFavorite, isLoggedIn }: ModalProps) {
   const [editedPokemon, setEditedPokemon] = useState<Pokemon | null>(null);
   const [isEditing, setIsEditing] = useState(false);
 
@@ -38,7 +40,10 @@ function PokemonModal({ pokemon, onClose, onUpdate, onDelete, onAddFavorite }: M
     try {
       const res = await fetch(`http://localhost:3001/api/pokemons/update/${editedPokemon.id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("token") || ""}`
+        },
         body: JSON.stringify(editedPokemon),
       });
       if (res.ok) {
@@ -57,6 +62,9 @@ function PokemonModal({ pokemon, onClose, onUpdate, onDelete, onAddFavorite }: M
     try {
       const res = await fetch(`http://localhost:3001/api/pokemons/delete/${editedPokemon.id}`, {
         method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${localStorage.getItem("token") || ""}`
+        }
       });
       if (res.ok) {
         onDelete(editedPokemon.id);
@@ -78,13 +86,22 @@ function PokemonModal({ pokemon, onClose, onUpdate, onDelete, onAddFavorite }: M
         {!isEditing ? (
           <>
             <h2>{editedPokemon.name_french}</h2>
-            <img src={editedPokemon.hires} alt={editedPokemon.name_french} style={{ width: "100%", borderRadius: "10px" }} />
+            <img
+              src={editedPokemon.hires}
+              onError={(e) => { (e.currentTarget as HTMLImageElement).src = ""; }}
+              alt={editedPokemon.name_french}
+              style={{ width: "100%", borderRadius: "10px" }}
+            />
             <p><strong>Type(s) :</strong> {editedPokemon.types.join(", ")}</p>
             <p><strong>ID :</strong> {editedPokemon.id}</p>
 
-            <button onClick={() => onAddFavorite(editedPokemon)}>Ajouter aux favoris</button>
-            <button onClick={() => setIsEditing(true)}>Modifier</button>
-            <button onClick={deletePokemon} style={{ marginLeft: "10px", color: "red" }}>Supprimer</button>
+            {isLoggedIn && (
+              <>
+                <button onClick={() => onAddFavorite(editedPokemon)}>Ajouter aux favoris</button>
+                <button onClick={() => setIsEditing(true)}>Modifier</button>
+                <button onClick={deletePokemon} style={{ marginLeft: "10px", color: "red" }}>Supprimer</button>
+              </>
+            )}
           </>
         ) : (
           <>
@@ -108,7 +125,7 @@ function PokemonModal({ pokemon, onClose, onUpdate, onDelete, onAddFavorite }: M
               onChange={(e) =>
                 handleChange(
                   "types",
-                  e.target.value.split(",").map((type) => type.trim())
+                  e.target.value.split(",").map((type) => type.trim()).filter(Boolean)
                 )
               }
             />
@@ -123,7 +140,6 @@ function PokemonModal({ pokemon, onClose, onUpdate, onDelete, onAddFavorite }: M
   );
 }
 
-// Composant principal de la liste de Pokémon
 function Liste() {
   const [pokemons, setPokemons] = useState<Array<Pokemon>>([]);
   const [filteredPokemons, setFilteredPokemons] = useState<Array<Pokemon>>([]);
@@ -134,8 +150,9 @@ function Liste() {
   const [limit, setLimit] = useState(10);
   const [filterName, setFilterName] = useState("");
   const [filterType, setFilterType] = useState("");
-  const [filterFavorites, setFilterFavorites] = useState(false); // Nouveau filtre pour les favoris
+  const [filterFavorites, setFilterFavorites] = useState(false);
   const [selectedPokemon, setSelectedPokemon] = useState<Pokemon | null>(null);
+  const isLoggedIn = !!localStorage.getItem("token");
 
   useEffect(() => {
     fetchPokemons();
@@ -148,15 +165,33 @@ function Liste() {
   const fetchPokemons = async () => {
     try {
       const response = await fetch(`http://localhost:3001/api/pokemons/list`);
-      const data = await response.json();
-      setPokemons(
-        data.map((pokemon: any) => ({
-          id: pokemon.id,
-          name_french: pokemon.name_french,
-          hires: pokemon.hires,
-          types: pokemon.types.split(",").map((type: string) => type.trim()),
-        }))
-      );
+      const raw = await response.json();
+
+      const normalized: Pokemon[] = raw.map((pokemon: any) => {
+        const typesArray =
+          Array.isArray(pokemon.types)
+            ? pokemon.types.map((t: any) => String(t))
+            : String(pokemon.types ?? "")
+              .split(",")
+              .map((t) => t.trim())
+              .filter(Boolean);
+
+        const hires =
+          pokemon.hires ??
+          pokemon.sprite_url ??
+          pokemon.sprite ??
+          "";
+
+        return {
+          id: Number(pokemon.id),
+          name_french: pokemon.name_french ?? pokemon.name ?? "",
+          hires,
+          types: typesArray,
+        };
+      });
+
+      normalized.sort((a, b) => b.id - a.id);
+      setPokemons(normalized);
     } catch (error) {
       console.error("Erreur lors de la récupération des Pokémon :", error);
     }
@@ -164,7 +199,6 @@ function Liste() {
 
   const applyFilters = () => {
     let filtered = [...pokemons];
-    filtered = filtered.slice(0, limit);
 
     if (filterName) {
       filtered = filtered.filter((pokemon) =>
@@ -182,12 +216,15 @@ function Liste() {
       filtered = filtered.filter((pokemon) => favorites.includes(pokemon.id));
     }
 
+    filtered = filtered.slice(0, limit);
     setFilteredPokemons(filtered);
   };
 
   const handleUpdate = (updatedPokemon: Pokemon) => {
     setPokemons((prev) =>
-      prev.map((p) => (p.id === updatedPokemon.id ? updatedPokemon : p))
+      prev
+        .map((p) => (p.id === updatedPokemon.id ? updatedPokemon : p))
+        .sort((a, b) => b.id - a.id)
     );
   };
 
@@ -251,7 +288,11 @@ function Liste() {
             onClick={() => setSelectedPokemon(pokemon)}
             style={{ cursor: "pointer" }}
           >
-            <img src={pokemon.hires} alt={pokemon.name_french} />
+            <img
+              src={pokemon.hires}
+              onError={(e) => { (e.currentTarget as HTMLImageElement).src = ""; }}
+              alt={pokemon.name_french}
+            />
             <h2>{pokemon.name_french}</h2>
             <p>Type(s) : {pokemon.types.join(", ")}</p>
             <p>ID : {pokemon.id}</p>
@@ -265,6 +306,7 @@ function Liste() {
           onUpdate={handleUpdate}
           onDelete={handleDelete}
           onAddFavorite={handleAddFavorite}
+          isLoggedIn={isLoggedIn}
         />
       )}
     </div>

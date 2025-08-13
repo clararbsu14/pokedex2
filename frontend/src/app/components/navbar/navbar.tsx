@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import styles from "./navbar.module.css";
 
+
 function Navbar() {
   return (
     <nav className={styles.navbar}>
@@ -13,6 +14,10 @@ function Navbar() {
         </li>
         <li>
           <Link to="/ajout" className={styles.link}>Ajouter un Pokémon</Link>
+        </li>
+
+        <li>
+          <Link to="/authentification" className={styles.link}>Authentification</Link>
         </li>
       </ul>
     </nav>
